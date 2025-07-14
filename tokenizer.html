@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <!-- The 'dark' class will be added here dynamically -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Token Counter</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Custom styles for a polished look */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .main-container, body {
+            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+        }
+        #token-count-display, #char-count-display {
+            transition: color 0.3s ease-in-out, transform 0.2s ease;
+        }
+        .theme-toggle:hover svg {
+            transform: scale(1.1);
+        }
+        .pulsate {
+            animation: pulsate 1s ease-in-out;
+        }
+        @keyframes pulsate {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+        #token-preview-container span {
+            white-space: pre-wrap; /* Allows wrapping and preserves whitespace */
+            word-break: break-all; /* Breaks long tokens if needed */
+        }
+    </style>
+    <script>
+        // Immediately-invoked function to set the theme on initial load
+        // This prevents a flash of the wrong theme
+        (function() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4">
+
+    <div class="main-container w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8 space-y-6 relative">
+        
+        <!-- Theme Toggle Button -->
+        <button id="theme-toggle" class="theme-toggle absolute top-4 right-4 p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+            <svg id="theme-icon-light" class="w-6 h-6 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <svg id="theme-icon-dark" class="w-6 h-6 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+        </button>
+        
+        <!-- Header Section -->
+        <header class="text-center pt-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">Live Token Counter</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Instantly estimate tokens and characters for your text or files.</p>
+        </header>
+
+        <!-- Stats Display -->
+        <div class="bg-indigo-50 dark:bg-gray-700/50 border-2 border-dashed border-indigo-200 dark:border-indigo-500 rounded-xl p-6 text-center flex justify-around">
+            <div>
+                <h2 class="text-lg font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Estimated Tokens</h2>
+                <p id="token-count-display" class="text-5xl md:text-6xl font-bold text-indigo-600 dark:text-indigo-400">0</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Characters</h2>
+                <p id="char-count-display" class="text-5xl md:text-6xl font-bold text-indigo-600 dark:text-indigo-400">0</p>
+            </div>
+        </div>
+
+        <!-- Main Content Area: Text Input and File Upload -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Text Input Area -->
+            <div class="flex flex-col">
+                <label for="text-input" class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Paste your text</label>
+                <textarea 
+                    id="text-input"
+                    rows="10"
+                    class="w-full p-4 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 resize-none"
+                    placeholder="Type or paste your content here..."
+                ></textarea>
+            </div>
+
+            <!-- File Upload and Options -->
+            <div class="flex flex-col space-y-4">
+                <label for="file-upload" class="text-lg font-semibold text-gray-700 dark:text-gray-300">Or upload a file</label>
+                <div class="relative border border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center h-full bg-gray-50 dark:bg-gray-700/50">
+                    <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h10a4 4 0 014 4v5a4 4 0 01-4 4H7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v6m0 0l-3-3m3 3l3-3"></path></svg>
+                    <label for="file-upload" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition cursor-pointer">
+                        Select File
+                    </label>
+                    <input id="file-upload" type="file" class="hidden">
+                    <p id="file-name" class="text-sm text-gray-500 dark:text-gray-400 mt-2">No file selected.</p>
+                </div>
+                 <button id="clear-button" class="w-full bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-600 transition">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Token Preview Area -->
+        <div>
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Token Preview</h3>
+            <div id="token-preview-container" class="w-full p-4 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 rounded-lg min-h-[6rem] text-lg leading-relaxed flex flex-wrap items-start gap-x-1">
+                <!-- Tokens will be rendered here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-gray-400 dark:text-gray-500 text-sm pt-4">
+            <p>Token count is an estimate. Hosted on GitHub Pages.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Use window.onload to ensure all assets (like the Tailwind script) are fully loaded
+        // before the main script logic runs. This prevents race conditions.
+        window.onload = function() {
+            // --- DOM Element References ---
+            const textInput = document.getElementById('text-input');
+            const fileInput = document.getElementById('file-upload');
+            const tokenCountDisplay = document.getElementById('token-count-display');
+            const charCountDisplay = document.getElementById('char-count-display');
+            const fileNameDisplay = document.getElementById('file-name');
+            const clearButton = document.getElementById('clear-button');
+            const themeToggleButton = document.getElementById('theme-toggle');
+            const tokenPreviewContainer = document.getElementById('token-preview-container');
+
+            // --- Color Palette for Tokens ---
+            const tokenColors = [
+                { light: 'bg-indigo-100 text-indigo-800', dark: 'dark:bg-indigo-900/50 dark:text-indigo-200' },
+                { light: 'bg-sky-100 text-sky-800', dark: 'dark:bg-sky-900/50 dark:text-sky-200' },
+                { light: 'bg-emerald-100 text-emerald-800', dark: 'dark:bg-emerald-900/50 dark:text-emerald-200' },
+                { light: 'bg-rose-100 text-rose-800', dark: 'dark:bg-rose-900/50 dark:text-rose-200' },
+                { light: 'bg-amber-100 text-amber-800', dark: 'dark:bg-amber-900/50 dark:text-amber-200' },
+                { light: 'bg-violet-100 text-violet-800', dark: 'dark:bg-violet-900/50 dark:text-violet-200' },
+            ];
+
+            // --- Core Logic ---
+
+            /**
+             * Updates the count on a given display element with a visual effect.
+             * @param {HTMLElement} element - The display element to update.
+             * @param {number} count - The number to display.
+             */
+            const updateCount = (element, count) => {
+                element.textContent = count;
+                element.classList.remove('pulsate');
+                void element.offsetWidth; // Trigger reflow to restart animation
+                element.classList.add('pulsate');
+                setTimeout(() => {
+                    element.classList.remove('pulsate');
+                }, 1000);
+            };
+
+            /**
+             * Estimates tokens in the given text using a more refined heuristic approach.
+             * This logic better reflects how modern tokenizers split text into sub-words,
+             * handle punctuation, and include whitespace.
+             * @param {string} text - The text to tokenize.
+             * @returns {{count: number, tokens: string[]}}
+             */
+            const estimateTokens = (text) => {
+                if (!text) {
+                    return { count: 0, tokens: [] };
+                }
+                
+                // This regex is designed to mimic Byte-Pair Encoding (BPE) tokenizers more closely.
+                // It handles common contractions, words (often with leading space), numbers, and punctuation.
+                const regex = /'s|'t|'re|'ve|'m|'ll|'d| ?[a-zA-Z]+| ?[0-9]+| ?[^a-zA-Z0-9\s]+|\s+(?!\S)|\s+/g;
+                
+                const tokens = text.match(regex) || [];
+                return { count: tokens.length, tokens };
+            };
+
+            /**
+             * Renders the token array into the preview container, handling whitespace correctly.
+             * @param {string[]} tokens - The array of token strings.
+             */
+            const renderTokenPreview = (tokens) => {
+                tokenPreviewContainer.innerHTML = ''; // Clear previous preview
+                if (tokens.length === 0) {
+                    tokenPreviewContainer.innerHTML = '<p class="text-gray-400">Enter text to see the token preview.</p>';
+                    return;
+                }
+                
+                tokens.forEach((token, index) => {
+                    const span = document.createElement('span');
+                    const color = tokenColors[index % tokenColors.length];
+                    
+                    // Replace spaces with a non-breaking space for visualization, but keep newlines as is.
+                    // This makes the spacing within tokens visible.
+                    span.innerHTML = token.replace(/ /g, '&nbsp;').replace(/\n/g, '<br>');
+                    
+                    span.className = `px-1 rounded-md ${color.light} ${color.dark}`;
+                    tokenPreviewContainer.appendChild(span);
+                });
+            };
+
+            /**
+             * Main function to process text and update the entire UI.
+             * @param {string} text - The input text.
+             */
+            const processText = (text) => {
+                const { count, tokens } = estimateTokens(text);
+                updateCount(tokenCountDisplay, count);
+                updateCount(charCountDisplay, text.length);
+                renderTokenPreview(tokens);
+            };
+
+            // --- Theme Toggle Logic ---
+            themeToggleButton.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            });
+
+
+            // --- Event Listeners ---
+            textInput.addEventListener('input', () => {
+                fileInput.value = ''; 
+                fileNameDisplay.textContent = 'No file selected.';
+                processText(textInput.value);
+            });
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                textInput.value = '';
+                fileNameDisplay.textContent = file.name.length > 25 ? file.name.substring(0, 22) + '...' : file.name;
+
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    const fileContent = e.target.result;
+                    processText(fileContent);
+                };
+
+                reader.onerror = () => {
+                    console.error("Error reading file.");
+                    fileNameDisplay.textContent = "Error reading file.";
+                    processText(''); // Clear UI on error
+                };
+                
+                reader.readAsText(file);
+            });
+            
+            clearButton.addEventListener('click', () => {
+                textInput.value = '';
+                fileInput.value = '';
+                fileNameDisplay.textContent = 'No file selected.';
+                processText('');
+            });
+
+            // Initial state
+            processText('');
+        };
+    </script>
+</body>
+</html>
